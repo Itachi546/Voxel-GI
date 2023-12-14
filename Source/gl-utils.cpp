@@ -163,6 +163,11 @@ void GLProgram::setMat4(const std::string& name, float* data)
 	glUniformMatrix4fv(glGetUniformLocation(handle_, name.c_str()), 1, GL_FALSE, data);
 }
 
+void GLProgram::setBuffer(int binding, uint32_t bufferId)
+{
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, bufferId);
+}
+
 /*****************************************************************************************************************************************/
 
 void GLComputeProgram::init(GLShader shader)
@@ -177,6 +182,16 @@ void GLComputeProgram::init(GLShader shader)
 void GLComputeProgram::setTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered)
 {
 	glBindImageTexture(binding, textureId, 0, layered ? GL_TRUE : GL_FALSE, 0, access, format);
+}
+
+void GLComputeProgram::setBuffer(int binding, uint32_t bufferId)
+{
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, bufferId);
+}
+
+void GLComputeProgram::setAtomicCounterBuffer(int binding, uint32_t bufferId)
+{
+	glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, binding, bufferId);
 }
 
 void GLComputeProgram::setVec2(const std::string& name, float* val) 

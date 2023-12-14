@@ -174,8 +174,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\clear-texture.comp" />
+    <None Include="Assets\Shaders\draw-call.comp" />
     <None Include="Assets\Shaders\line.frag" />
     <None Include="Assets\Shaders\line.vert" />
+    <None Include="Assets\Shaders\mesh.frag" />
+    <None Include="Assets\Shaders\mesh.vert" />
+    <None Include="Assets\Shaders\visualizer.frag" />
+    <None Include="Assets\Shaders\visualizer.vert" />
     <None Include="Assets\Shaders\voxelizer.frag" />
     <None Include="Assets\Shaders\voxelizer.geom" />
     <None Include="Assets\Shaders\voxelizer.vert" />

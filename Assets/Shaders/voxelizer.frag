@@ -22,5 +22,5 @@ void main() {
    fragColor = vec4(col, 1.0f);
 
    ivec3 voxelCoord = ivec3(gWorldPos * uVoxelDims);
-   imageStore(uVoxelTexture, voxelCoord, vec4(1.0f));
+   imageStore(uVoxelTexture, voxelCoord, vec4(col, 1.0f));
 }

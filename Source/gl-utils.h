@@ -63,6 +63,8 @@ public:
 
 	void setUAVTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered = false);
 
+	void setBuffer(int binding, uint32_t bufferId);
+
 	void setInt(const std::string& name, int val);
 
 	void setFloat(const std::string& name, float val);
@@ -95,6 +97,10 @@ public:
 	void init(GLShader shader);
 
 	void setTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered = false);
+
+	void setBuffer(int binding, uint32_t bufferId);
+
+	void setAtomicCounterBuffer(int binding, uint32_t bufferId);
 
 	void setInt(const std::string& name, int val);
 
@@ -242,6 +248,12 @@ struct GLMesh {
 	void draw() {
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+
+	void drawInstanced(uint32_t instanceCount) {
+		glBindVertexArray(vao);
+		glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0, instanceCount);
 		glBindVertexArray(0);
 	}
 

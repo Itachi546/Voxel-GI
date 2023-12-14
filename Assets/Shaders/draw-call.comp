@@ -1,0 +1,27 @@
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+struct InstanceData {
+   float x, y, z;
+};
+
+layout(rgba8, binding = 0) uniform image3D uVoxelTexture;
+
+layout(std430, binding = 1) buffer DrawData {
+   InstanceData instanceData[];
+};
+
+layout(binding = 2) uniform atomic_uint drawCount;
+
+void main() {
+  ivec3 uv = ivec3(gl_GlobalInvocationID.xyz);
+  vec3 color = imageLoad(uVoxelTexture, uv).rgb;
+
+  if(dot(color, vec3(1.0)) > 0.0) {
+     uint index = atomicCounterIncrement(drawCount);
+     instanceData[index].x = uv.x;
+     instanceData[index].y = uv.y;
+     instanceData[index].z = uv.z;
+  }
+}

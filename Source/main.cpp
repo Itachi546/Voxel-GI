@@ -6,12 +6,6 @@
 #include "mesh.h"
 
 #include "voxel-raytracing/voxelizer.h"
-
-#define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE
-#define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "tinygltf/tiny_gltf.h"
-
 #include <iostream>
 
 struct WindowProps {
@@ -110,121 +104,6 @@ void MoveCamera(float dt) {
 }
 
 
-struct Vertex {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec2 uv;
-};
-
-static void InitializePlaneMesh(GLMesh* mesh, int width, int height) {
-
-	std::vector<Vertex> vertices;
-	float invWidth = 1.0f / float(width);
-	float invHeight = 1.0f / float(height);
-
-	float tX = -width * 0.5f;
-	float tY = -height * 0.5f;
-
-	for (int y = 0; y < height; ++y) {
-		for (int x = 0; x < width; ++x) {
-			glm::vec3 position{ float(x) + tX, 0.0f, float(y) + tY };
-			glm::vec2 uv{ position.x * invWidth, position.y * invHeight };
-			vertices.emplace_back(Vertex{ position, glm::vec3{0.0f, 1.0f, 0.0f}, uv });
-		}
-	}
-
-	std::vector<uint32_t> indices;
-	for (int i = 0; i < height - 1; ++i) {
-		for (int j = 0; j < width - 1; ++j) {
-			int p0 = i * width + j;
-			int p1 = p0 + 1;
-			int p2 = (i + 1) * width + j;
-			int p3 = p2 + 1;
-			indices.push_back(p2);
-			indices.push_back(p1);
-			indices.push_back(p0);
-
-			indices.push_back(p2);
-			indices.push_back(p3);
-			indices.push_back(p1);
-		}
-	}
-	uint32_t vertexCount = static_cast<uint32_t>(vertices.size()) * 8;
-	uint32_t indexCount = static_cast<uint32_t>(indices.size());
-	mesh->init((float*)vertices.data(), vertexCount, indices.data(), indexCount);
-}
-
-static uint8_t* getBufferPtr(tinygltf::Model* model, const tinygltf::Accessor& accessor) {
-	tinygltf::BufferView& bufferView = model->bufferViews[accessor.bufferView];
-	return model->buffers[bufferView.buffer].data.data() + accessor.byteOffset + bufferView.byteOffset;
-}
-
-static void LoadMesh(const std::string filename, GLMesh* mesh) {
-	tinygltf::TinyGLTF loader;
-	tinygltf::Model model;
-	std::string err, warn;
-	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
-	if (!ret) {
-		logger::Error("Failed to load file" + filename);
-		return;
-	}
-	if (!warn.empty()) logger::Warn(warn);
-	if (!err.empty()) logger::Error(err);
-
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-	for (auto& primitive : model.meshes[0].primitives)
-	{
-		// Parse position
-		const tinygltf::Accessor& positionAccessor = model.accessors[primitive.attributes["POSITION"]];
-		float* positions = (float*)getBufferPtr(&model, positionAccessor);
-		uint32_t numPosition = (uint32_t)positionAccessor.count;
-
-		// Parse normals
-		float* normals = nullptr;
-		auto normalAttributes = primitive.attributes.find("NORMAL");
-		if (normalAttributes != primitive.attributes.end()) {
-			const tinygltf::Accessor& normalAccessor = model.accessors[normalAttributes->second];
-			assert(numPosition == normalAccessor.count);
-			normals = (float*)getBufferPtr(&model, normalAccessor);
-		}
-
-		// Parse UV
-		float* uvs = nullptr;
-		auto uvAttributes = primitive.attributes.find("TEXCOORD_0");
-		if (uvAttributes != primitive.attributes.end()) {
-			const tinygltf::Accessor& uvAccessor = model.accessors[uvAttributes->second];
-			assert(numPosition == uvAccessor.count);
-			uvs = (float*)getBufferPtr(&model, uvAccessor);
-		}
-
-		for (uint32_t i = 0; i < numPosition; ++i) {
-			Vertex vertex;
-			vertex.position = { positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2] };
-
-			vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-			if (normals)
-				vertex.normal = glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
-
-			vertex.uv = glm::vec2(0.0f);
-			if (uvs)
-				vertex.uv = glm::vec2(uvs[i * 2 + 0], 1.0f - uvs[i * 2 + 1]);
-
-			vertices.push_back(vertex);
-		}
-
-		const tinygltf::Accessor& indicesAccessor = model.accessors[primitive.indices];
-		uint32_t* indicesPtr = (uint32_t*)getBufferPtr(&model, indicesAccessor);
-		uint32_t indexCount = (uint32_t)indicesAccessor.count;
-		indices.insert(indices.end(), indicesPtr, indicesPtr + indexCount);
-	}
-
-	uint32_t vertexCount = static_cast<uint32_t>(vertices.size() * 8);
-	uint32_t indexCount = static_cast<uint32_t>(indices.size());
-	mesh->init((float*)vertices.data(), vertexCount, indices.data(), indexCount);
-}
-
-
 int main() {
 
 	if(!glfwInit()) return 1;
@@ -263,7 +142,6 @@ int main() {
 	logger::Debug("Vendor: " + std::string(vendor));
 
 	glEnable(GL_DEPTH_TEST);
-	logger::Debug("Enabled Depth Test ...");
 
     ImGuiService::Initialize(window);
 
@@ -275,12 +153,22 @@ int main() {
 
 	std::vector<Mesh> meshes;
 	GLMesh bunny;
-	LoadMesh("Assets/Models/bunny.gltf", &bunny);
-	glm::mat4 transform = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
+	Utils::LoadMesh("Assets/Models/bunny.gltf", &bunny);
+	glm::mat4 transform = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(40.0f));
 	meshes.emplace_back(Mesh{ bunny, transform });
 
 	Voxelizer voxelizer;
 	voxelizer.Init(512);
+
+	TextureCreateInfo colorAttachment = { gFBOWidth, gFBOHeight };
+	TextureCreateInfo depthAttachment;
+	InitializeDepthTexture(&depthAttachment, gFBOWidth, gFBOHeight);
+
+	GLFramebuffer mainFBO;
+	mainFBO.init({ Attachment{ 0, &colorAttachment } }, &depthAttachment);
+
+	GLProgram mainProgram;
+	mainProgram.init(GLShader("Assets/Shaders/mesh.vert"), GLShader("Assets/Shaders/mesh.frag"));
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -293,14 +181,34 @@ int main() {
 
 		ImGuiService::RenderDockSpace();
 
-		voxelizer.Render(&gCamera, meshes);
+		voxelizer.Generate(&gCamera, meshes);
+
+		glm::mat4 VP = gCamera.GetViewProjectionMatrix();
+		mainFBO.bind();
+		mainFBO.setClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+		mainFBO.setViewport(gFBOWidth, gFBOHeight);
+		mainFBO.clear(true);
+
+		voxelizer.Visualize(&gCamera);
+
+		if (!voxelizer.enableDebugVoxel) {
+			mainProgram.bind();
+			mainProgram.setMat4("uVP", &VP[0][0]);
+			for (auto& mesh : meshes)
+			{
+				mainProgram.setMat4("uModel", &mesh.modalMatrix[0][0]);
+				mesh.glMesh.draw();
+			}
+			mainProgram.unbind();
+		}
+		mainFBO.unbind();
 
 		ImGui::Begin("MainWindow");
 		ImVec2 dims = ImGui::GetContentRegionAvail();
 		ImVec2 pos = ImGui::GetCursorScreenPos();
 
 		ImGui::GetWindowDrawList()->AddImage(
-			(ImTextureID)(uint64_t)voxelizer.framebuffer->attachments[0],
+			(ImTextureID)(uint64_t)mainFBO.attachments[0],
 			ImVec2(pos.x, pos.y),
 			ImVec2(pos.x + dims.x, pos.y + dims.y),
 			ImVec2(0, 1),

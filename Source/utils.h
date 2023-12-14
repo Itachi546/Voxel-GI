@@ -2,6 +2,9 @@
 
 #include "glm-includes.h"
 
+#include <string>
+
+struct GLMesh;
 struct Ray {
 	glm::vec3 origin;
 	glm::vec3 direction;
@@ -16,6 +19,10 @@ namespace Utils {
 	unsigned char* LoadImage(const char* filename, int* width, int* height, int* nChannel);
 
 	float* LoadImageFloat(const char* filename, int* width, int* height, int* nChannel);
+
+	void LoadMesh(const std::string filename, GLMesh* mesh);
+
+	void InitializePlaneMesh(GLMesh* mesh, int width, int height);
 
 	void FreeImage(void* buffer);
 }
