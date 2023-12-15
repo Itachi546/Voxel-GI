@@ -58,7 +58,7 @@ void Camera::CalculateView()
 {
 	glm::mat3 rotation = glm::yawPitchRoll(mRotation.y, mRotation.x, mRotation.z);
 
-	mForward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, 1.0f));
+	mForward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
 	mUp = glm::normalize(rotation * glm::vec3(0.0f, 1.0f, 0.0f));
 
 	mView = glm::lookAt(mPosition, mPosition + mForward, mUp);

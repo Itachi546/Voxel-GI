@@ -10,7 +10,7 @@
 // Helper Structs
 
 struct DrawElementsIndirectCommand {
-	GLuint count_;
+	GLuint count_; 
 	GLuint instanceCount_;
 	GLuint firstIndex_;
 	GLuint baseVertex_;

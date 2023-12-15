@@ -11,23 +11,26 @@ out vec3 gWorldPos;
 out vec3 gNormal;
 out vec2 gUV;
 
-uniform mat4 uVP;
 uniform mat4 uVoxelSpaceTransform;
-uniform mat4 uView;
-uniform int uVoxelDims;
+// X - voxelDimension, Y- voxelSize
+uniform vec2 uVoxelDims;
+
+vec3 ToVoxelSpace(vec3 p, float halfSize) {
+   return p / halfSize;
+}
 
 void main() {
-   vec3 e1 = normalize(vWorldPos[0] - vWorldPos[1]);
-   vec3 e2 = normalize(vWorldPos[2] - vWorldPos[1]);
+   vec3 e1 = normalize(vWorldPos[1] - vWorldPos[0]);
+   vec3 e2 = normalize(vWorldPos[2] - vWorldPos[0]);
 
    vec3 faceNormal = cross(e1, e2);
 
    uint dominantAxis = abs(faceNormal[1]) > abs(faceNormal[0]) ? 1 : 0;
    dominantAxis = abs(faceNormal[2]) > abs(faceNormal[dominantAxis]) ? 2 : dominantAxis;
 
-   float halfDims = 0.5 * uVoxelDims;
+   float halfSize = uVoxelDims.x * uVoxelDims.y * 0.5;
    for(int i = 0; i < 3; ++i) {
-      vec3 voxelSpacePosition = vec3(uVoxelSpaceTransform * vec4(vWorldPos[i], 1.0f));
+      vec3 voxelSpacePosition = ToVoxelSpace(vWorldPos[i], halfSize);
 
       vec3 projectedPosition = voxelSpacePosition;
       if(dominantAxis == 0)
@@ -36,7 +39,7 @@ void main() {
         projectedPosition = projectedPosition.xzy;
       projectedPosition.z = 0.0f;
 
-      gWorldPos = voxelSpacePosition * 0.5 + 0.5;
+      gWorldPos = voxelSpacePosition * 0.5 + 0.5; 
       gUV = vUV[i];
       gNormal = faceNormal;
 

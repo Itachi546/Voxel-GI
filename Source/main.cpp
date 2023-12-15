@@ -79,9 +79,9 @@ MessageCallback(GLenum source,
 		type, severity, message);
 }
 
-void MoveCamera(float dt) {
-	if (gWindowProps.mouseDown)
-		gCamera.Rotate(gWindowProps.mDy, -gWindowProps.mDx, dt);
+void MoveCamera(float dt, bool isWindowActive) {
+	if (gWindowProps.mouseDown && isWindowActive)
+		gCamera.Rotate(-gWindowProps.mDy, -gWindowProps.mDx, dt);
 
 	float walkSpeed = dt * 5.0f;
 	if (glfwGetKey(gWindowProps.window, GLFW_KEY_LEFT_SHIFT) != GLFW_RELEASE)
@@ -106,7 +106,7 @@ void MoveCamera(float dt) {
 
 int main() {
 
-	if(!glfwInit()) return 1;
+	if (!glfwInit()) return 1;
 
 	GLFWwindow* window = glfwCreateWindow(gWindowProps.width, gWindowProps.height, "Hello OpenGL", 0, 0);
 	gWindowProps.window = window;
@@ -143,19 +143,17 @@ int main() {
 
 	glEnable(GL_DEPTH_TEST);
 
-    ImGuiService::Initialize(window);
+	ImGuiService::Initialize(window);
 
 	float startTime = (float)glfwGetTime();
 	float dt = 1.0f / 60.0f;
 
 	gCamera.SetAspect(float(gWindowProps.width) / float(gWindowProps.height));
-	gCamera.SetPosition(glm::vec3(0.0f, 2.0f, -6.0f));
+	gCamera.SetPosition(glm::vec3(0.0f, 2.0f, 6.0f));
 
-	std::vector<Mesh> meshes;
-	GLMesh bunny;
-	Utils::LoadMesh("Assets/Models/bunny.gltf", &bunny);
-	glm::mat4 transform = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(40.0f));
-	meshes.emplace_back(Mesh{ bunny, transform });
+	std::vector<MeshGroup> scene;
+	scene.push_back(MeshGroup{});
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/scene/scene.gltf", &scene.back());
 
 	Voxelizer voxelizer;
 	voxelizer.Init(512);
@@ -173,15 +171,13 @@ int main() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
-		MoveCamera(dt);
-
 		gCamera.Update(dt);
 
 		ImGuiService::NewFrame();
 
 		ImGuiService::RenderDockSpace();
 
-		voxelizer.Generate(&gCamera, meshes);
+		voxelizer.Generate(&gCamera, scene);
 
 		glm::mat4 VP = gCamera.GetViewProjectionMatrix();
 		mainFBO.bind();
@@ -194,16 +190,15 @@ int main() {
 		if (!voxelizer.enableDebugVoxel) {
 			mainProgram.bind();
 			mainProgram.setMat4("uVP", &VP[0][0]);
-			for (auto& mesh : meshes)
-			{
-				mainProgram.setMat4("uModel", &mesh.modalMatrix[0][0]);
-				mesh.glMesh.draw();
-			}
+			for (auto& meshGroup : scene)
+				meshGroup.Draw(&mainProgram);
 			mainProgram.unbind();
 		}
 		mainFBO.unbind();
 
 		ImGui::Begin("MainWindow");
+
+		MoveCamera(dt, ImGui::IsWindowFocused());
 		ImVec2 dims = ImGui::GetContentRegionAvail();
 		ImVec2 pos = ImGui::GetCursorScreenPos();
 
@@ -217,7 +212,7 @@ int main() {
 
 		ImGui::Begin("Logs");
 		std::vector<std::string>& logs = logger::GetAllLogs();
-		for(auto& log : logs)
+		for (auto& log : logs)
 			ImGui::Text("%s", log.c_str());
 		ImGui::End();
 
@@ -237,7 +232,7 @@ int main() {
 		gWindowProps.mDx = 0.0f;
 		gWindowProps.mDy = 0.0f;
 	}
-    ImGuiService::Shutdown();
+	ImGuiService::Shutdown();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();

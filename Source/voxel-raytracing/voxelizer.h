@@ -14,9 +14,9 @@ struct GLBuffer;
 class Voxelizer {
 	
 public:
-	void Init(uint32_t voxelDims, uint32_t voxelSize = 1);
+	void Init(uint32_t voxelDims, float unitVoxelSize = 0.3f);
 
-	void Generate(Camera* camera, std::vector<Mesh>& meshes);
+	void Generate(Camera* camera, std::vector<MeshGroup>& meshes);
 
 	void Visualize(Camera* camera);
 
@@ -26,17 +26,19 @@ public:
 
 	std::unique_ptr<GLFramebuffer> framebuffer;
 	std::unique_ptr<GLTexture> voxelTexture;
-	bool enableDebugVoxel = true;
+	bool enableDebugVoxel = false;
 private:
 	std::unique_ptr<GLProgram> mProgram, mVisualizerProgram;
 	std::unique_ptr<GLComputeProgram> mClearTextureProgram, mDrawCallGeneratorProgram;
 	std::unique_ptr<GLBuffer> mDrawCommandBuffer, mDrawCountBuffer;
 
 	uint32_t mVoxelDims;
-	//uint32_t mVoxelSize;
+	float mUnitVoxelSize;
 	glm::mat4 mVoxelSpaceTransform;
 
 	std::unique_ptr<GLMesh> mCubeMesh;
 	uint32_t mTotalVoxels = 0;
+
+	void updateVoxelSpaceTransform();
 
 };

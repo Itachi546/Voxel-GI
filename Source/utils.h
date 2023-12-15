@@ -20,9 +20,5 @@ namespace Utils {
 
 	float* LoadImageFloat(const char* filename, int* width, int* height, int* nChannel);
 
-	void LoadMesh(const std::string filename, GLMesh* mesh);
-
-	void InitializePlaneMesh(GLMesh* mesh, int width, int height);
-
 	void FreeImage(void* buffer);
 }

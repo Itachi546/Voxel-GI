@@ -156,6 +156,7 @@
     <ClCompile Include="Source\gl-utils.cpp" />
     <ClCompile Include="Source\imgui-service.cpp" />
     <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\mesh.cpp" />
     <ClCompile Include="Source\utils.cpp" />
     <ClCompile Include="Source\voxel-raytracing\voxelizer.cpp" />
   </ItemGroup>
@@ -168,6 +169,8 @@
     <ClInclude Include="Source\logger.h" />
     <ClInclude Include="Source\mesh.h" />
     <ClInclude Include="Source\tinygltf\json.hpp" />
+    <ClInclude Include="Source\tinygltf\stb_image.h" />
+    <ClInclude Include="Source\tinygltf\stb_image_write.h" />
     <ClInclude Include="Source\tinygltf\tiny_gltf.h" />
     <ClInclude Include="Source\utils.h" />
     <ClInclude Include="Source\voxel-raytracing\voxelizer.h" />
