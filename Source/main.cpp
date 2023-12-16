@@ -155,7 +155,8 @@ int main() {
 
 	std::vector<MeshGroup> scene;
 	scene.push_back(MeshGroup{});
-	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/Sponza/Sponza.gltf", &scene.back());
+	//LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/Sponza/Sponza.gltf", &scene.back());
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/dragon/dragon.glb", &scene.back());
 	const AABB& debugAABB = scene[0].aabbs[0];
 
 	Voxelizer voxelizer;

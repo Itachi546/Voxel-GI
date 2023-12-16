@@ -128,9 +128,9 @@ void GLProgram::setTexture(const std::string& name, int binding, unsigned int te
 		glBindTexture(GL_TEXTURE_2D, textureId);
 }
 
-void GLProgram::setUAVTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered)
+void GLProgram::setUAVTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered, int mipLevel)
 {
-	glBindImageTexture(binding, textureId, 0, layered ? GL_TRUE : GL_FALSE, 0, access, format);
+	glBindImageTexture(binding, textureId, mipLevel, layered ? GL_TRUE : GL_FALSE, 0, access, format);
 }
 
 void GLProgram::setInt(const std::string& name, int val)
@@ -179,9 +179,9 @@ void GLComputeProgram::init(GLShader shader)
 	printProgramInfoLog(handle_);
 }
 
-void GLComputeProgram::setTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered)
+void GLComputeProgram::setTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered, int mipLevel)
 {
-	glBindImageTexture(binding, textureId, 0, layered ? GL_TRUE : GL_FALSE, 0, access, format);
+	glBindImageTexture(binding, textureId, mipLevel, layered ? GL_TRUE : GL_FALSE, 0, access, format);
 }
 
 void GLComputeProgram::setBuffer(int binding, uint32_t bufferId)

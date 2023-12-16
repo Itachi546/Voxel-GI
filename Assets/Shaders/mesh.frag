@@ -13,6 +13,7 @@ void main() {
    vec3 col = diffuse * vec3(1.28, 1.20, 0.99);
    col += (vNormal.y * 0.5 + 0.5) * vec3(0.16, 0.20, 0.28);
 
+   col *= vec3(0.8, 0.3, 0.2);
    col /= (1.0f + col);
    col = pow(col, vec3(0.4545));
    fragColor = vec4(col, 1.0f);

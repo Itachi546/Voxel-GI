@@ -61,7 +61,7 @@ public:
 
 	void setTexture(const std::string& name, int binding, unsigned int textureId, bool layered = false);
 
-	void setUAVTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered = false);
+	void setUAVTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered = false, int mipLevel = 0);
 
 	void setBuffer(int binding, uint32_t bufferId);
 
@@ -96,7 +96,7 @@ public:
 
 	void init(GLShader shader);
 
-	void setTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered = false);
+	void setTexture(int binding, uint32_t textureId, GLenum access, GLenum format, bool layered = false, int mipLevel = 0);
 
 	void setBuffer(int binding, uint32_t bufferId);
 
