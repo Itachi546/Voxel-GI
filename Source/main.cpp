@@ -150,7 +150,8 @@ int main() {
 	float dt = 1.0f / 60.0f;
 
 	gCamera.SetAspect(float(gWindowProps.width) / float(gWindowProps.height));
-	gCamera.SetPosition(glm::vec3(0.0f, 0.0f, 6.0f));
+	gCamera.SetPosition(glm::vec3(0.0f, 2.0f, 0.0f));
+	gCamera.SetRotation(glm::vec3(0.0f, glm::pi<float>() * 0.5f, 0.0f));
 
 	std::vector<MeshGroup> scene;
 	scene.push_back(MeshGroup{});

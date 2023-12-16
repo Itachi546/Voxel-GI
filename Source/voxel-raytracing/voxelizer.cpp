@@ -43,7 +43,7 @@ void Voxelizer::Init(uint32_t voxelDims, float unitVoxelSize)
 	framebuffer = std::make_unique<GLFramebuffer>();
 	framebuffer->init({ Attachment{0, &colorAttachment} }, nullptr);
 
-	TextureCreateInfo volumeTextureCreateInfo{ voxelDims, voxelDims, voxelDims, GL_RED_INTEGER, GL_R32UI, GL_TEXTURE_3D, GL_UNSIGNED_INT};
+	TextureCreateInfo volumeTextureCreateInfo{ voxelDims, voxelDims, voxelDims, GL_RGBA, GL_RGBA8, GL_TEXTURE_3D, GL_UNSIGNED_BYTE};
 	voxelTexture = std::make_unique<GLTexture>();
 	voxelTexture->init(&volumeTextureCreateInfo);
 
