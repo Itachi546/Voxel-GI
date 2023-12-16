@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "camera.h"
 #include "mesh.h"
+#include "debug-draw.h"
 
 #include "voxel-raytracing/voxelizer.h"
 #include <iostream>
@@ -125,7 +126,6 @@ int main() {
 	glfwSwapInterval(1);
 	glfwMakeContextCurrent(window);
 
-
 	if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) == -1) {
 		std::cerr << "Failed to initialize OpenGL" << std::endl;
 		return -1;
@@ -143,17 +143,19 @@ int main() {
 
 	glEnable(GL_DEPTH_TEST);
 
+	DebugDraw::Initialize();
 	ImGuiService::Initialize(window);
 
 	float startTime = (float)glfwGetTime();
 	float dt = 1.0f / 60.0f;
 
 	gCamera.SetAspect(float(gWindowProps.width) / float(gWindowProps.height));
-	gCamera.SetPosition(glm::vec3(0.0f, 2.0f, 6.0f));
+	gCamera.SetPosition(glm::vec3(0.0f, 0.0f, 6.0f));
 
 	std::vector<MeshGroup> scene;
 	scene.push_back(MeshGroup{});
-	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/scene/scene.gltf", &scene.back());
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/Sponza/Sponza.gltf", &scene.back());
+	const AABB& debugAABB = scene[0].aabbs[0];
 
 	Voxelizer voxelizer;
 	voxelizer.Init(512);
@@ -168,6 +170,7 @@ int main() {
 	GLProgram mainProgram;
 	mainProgram.init(GLShader("Assets/Shaders/mesh.vert"), GLShader("Assets/Shaders/mesh.frag"));
 
+	bool wireframeMode = false;
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
@@ -177,7 +180,13 @@ int main() {
 
 		ImGuiService::RenderDockSpace();
 
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		voxelizer.Generate(&gCamera, scene);
+
+		if (wireframeMode) 
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		glm::mat4 VP = gCamera.GetViewProjectionMatrix();
 		mainFBO.bind();
@@ -194,8 +203,9 @@ int main() {
 				meshGroup.Draw(&mainProgram);
 			mainProgram.unbind();
 		}
-		mainFBO.unbind();
 
+		DebugDraw::Render(VP);
+		mainFBO.unbind();
 		ImGui::Begin("MainWindow");
 
 		MoveCamera(dt, ImGui::IsWindowFocused());
@@ -217,7 +227,8 @@ int main() {
 		ImGui::End();
 
 		ImGui::Begin("Options");
-		ImGui::Text("Voxelize Texture");
+		ImGui::Checkbox("Wireframe", &wireframeMode);
+
 		voxelizer.AddUI();
 		ImGui::End();
 
@@ -232,6 +243,7 @@ int main() {
 		gWindowProps.mDx = 0.0f;
 		gWindowProps.mDy = 0.0f;
 	}
+	DebugDraw::Shutdown();
 	ImGuiService::Shutdown();
 
 	glfwDestroyWindow(window);

@@ -225,10 +225,13 @@ void LoadMesh(const std::string& filename, MeshGroup* meshGroup) {
 	std::string err, warn;
 	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
 	if (!ret) {
-		if (!warn.empty()) logger::Warn(warn);
-		if (!err.empty()) logger::Error(err);
-		logger::Error("Failed to load file: " + filename);
-		return;
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
+		if (!ret) {
+			if (!warn.empty()) logger::Warn(warn);
+			if (!err.empty()) logger::Error(err);
+			logger::Error("Failed to load file: " + filename);
+			return;
+		}
 	}
 
 	std::vector<Vertex> vertices;

@@ -14,7 +14,7 @@ struct GLBuffer;
 class Voxelizer {
 	
 public:
-	void Init(uint32_t voxelDims, float unitVoxelSize = 0.3f);
+	void Init(uint32_t voxelDims, float unitVoxelSize = 0.05f);
 
 	void Generate(Camera* camera, std::vector<MeshGroup>& meshes);
 
@@ -34,11 +34,9 @@ private:
 
 	uint32_t mVoxelDims;
 	float mUnitVoxelSize;
-	glm::mat4 mVoxelSpaceTransform;
 
 	std::unique_ptr<GLMesh> mCubeMesh;
 	uint32_t mTotalVoxels = 0;
 
-	void updateVoxelSpaceTransform();
-
+	bool mRegenerateVoxelData = true;
 };

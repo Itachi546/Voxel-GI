@@ -6,7 +6,7 @@ struct InstanceData {
    float x, y, z;
 };
 
-layout(rgba8, binding = 0) uniform image3D uVoxelTexture;
+layout(r32ui, binding = 0) uniform uimage3D uVoxelTexture;
 
 layout(std430, binding = 1) buffer DrawData {
    InstanceData instanceData[];
@@ -14,11 +14,43 @@ layout(std430, binding = 1) buffer DrawData {
 
 layout(binding = 2) uniform atomic_uint drawCount;
 
+uniform vec4 frustumPlanes[6];
+uniform int uVoxelDims;
+uniform float uVoxelSpan;
+uniform float uUnitVoxelSize;
+
+bool IntersectFrustum(vec3 aabbMin, vec3 aabbMax)
+{
+   vec3 p;
+   for (int	i =	0; i < 6; ++i) {
+      p = aabbMin;
+	  if (frustumPlanes[i].x > 0)
+    	  p.x =	aabbMax.x;
+	  if (frustumPlanes[i].y > 0)
+    	  p.y =	aabbMax.y;
+	  if (frustumPlanes[i].z > 0)
+    	  p.z =	aabbMax.z;
+
+	  if (dot(frustumPlanes[i].xyz,	p) + frustumPlanes[i].w	< 0.0f)
+    	  return false;
+   }
+   return true;
+}
+
+vec3 toWorldSpace(vec3 p) {
+    vec3 pClip = (p / uVoxelDims) * 2.0f - 1.0f;
+    return pClip * uVoxelSpan;
+}
+
 void main() {
   ivec3 uv = ivec3(gl_GlobalInvocationID.xyz);
-  vec3 color = imageLoad(uVoxelTexture, uv).rgb;
+  uint color = imageLoad(uVoxelTexture, uv).r;
 
-  if(dot(color, vec3(1.0)) > 0.0) {
+  vec3 wp = toWorldSpace(uv);
+
+  float voxelSize = uUnitVoxelSize * 0.5;
+  bool intersect = IntersectFrustum(wp - voxelSize, wp + voxelSize);
+  if(color > 0 && intersect) {
      uint index = atomicCounterIncrement(drawCount);
      instanceData[index].x = uv.x;
      instanceData[index].y = uv.y;

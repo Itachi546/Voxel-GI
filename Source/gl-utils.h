@@ -110,7 +110,7 @@ public:
 
 	void setVec3(const std::string& name, float* val);
 
-	void setVec4(const std::string& name, float* val);
+	void setVec4(const std::string& name, float* val, int count = 1);
 
 	void dispatch(uint32_t workGroupX, uint32_t workGroupY, uint32_t workGroupZ) const;
 

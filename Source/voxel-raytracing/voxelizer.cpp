@@ -31,7 +31,7 @@ void Voxelizer::Init(uint32_t voxelDims, float unitVoxelSize)
 
 	mDrawCommandBuffer = std::make_unique<GLBuffer>();
 	// Support only 10'000 voxels
-	uint32_t bufferSize = sizeof(float) * 3 * 100'000;
+	uint32_t bufferSize = sizeof(float) * 3 * 2'000'000;
 	mDrawCommandBuffer->init(nullptr, bufferSize, 0);
 
 	mDrawCountBuffer = std::make_unique<GLBuffer>();
@@ -43,18 +43,19 @@ void Voxelizer::Init(uint32_t voxelDims, float unitVoxelSize)
 	framebuffer = std::make_unique<GLFramebuffer>();
 	framebuffer->init({ Attachment{0, &colorAttachment} }, nullptr);
 
-	TextureCreateInfo volumeTextureCreateInfo{ voxelDims, voxelDims, voxelDims, GL_RGBA, GL_RGBA8, GL_TEXTURE_3D, GL_UNSIGNED_BYTE};
+	TextureCreateInfo volumeTextureCreateInfo{ voxelDims, voxelDims, voxelDims, GL_RED_INTEGER, GL_R32UI, GL_TEXTURE_3D, GL_UNSIGNED_INT};
 	voxelTexture = std::make_unique<GLTexture>();
 	voxelTexture->init(&volumeTextureCreateInfo);
 
 	mCubeMesh = std::make_unique<GLMesh>();
 	InitializeCubeMesh(mCubeMesh.get());
-
-	updateVoxelSpaceTransform();
 }
 
 void Voxelizer::Generate(Camera* camera, std::vector<MeshGroup>& meshes)
 {
+	if (mRegenerateVoxelData == false) return;
+	mRegenerateVoxelData = false;
+
 	mClearTextureProgram->bind();
 	mClearTextureProgram->setTexture(0, voxelTexture->handle, GL_WRITE_ONLY, voxelTexture->internalFormat, true);
 	uint32_t workGroupSize = (mVoxelDims + 7) / 8;
@@ -74,11 +75,10 @@ void Voxelizer::Generate(Camera* camera, std::vector<MeshGroup>& meshes)
 	mProgram->bind();
 	glm::mat4 VP = camera->GetViewProjectionMatrix();
 	glm::mat4 V = camera->GetViewMatrix();
-	mProgram->setMat4("uVoxelSpaceTransform", &mVoxelSpaceTransform[0][0]);
 	glm::vec2 voxelDims{ mVoxelDims, mUnitVoxelSize };
 	mProgram->setVec2("uVoxelDims", &voxelDims[0]);
 
-	mProgram->setUAVTexture(0, voxelTexture->handle, GL_READ_WRITE,  voxelTexture->internalFormat, true);
+	mProgram->setUAVTexture(0, voxelTexture->handle, GL_WRITE_ONLY,  voxelTexture->internalFormat, true);
 
 	for (auto& mesh : meshes) {
 		mesh.Draw(mProgram.get());
@@ -92,8 +92,21 @@ void Voxelizer::Generate(Camera* camera, std::vector<MeshGroup>& meshes)
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
+	glBindTexture(GL_TEXTURE_3D, voxelTexture->handle);
+	glGenerateMipmap(GL_TEXTURE_3D);
+}
+
+void Voxelizer::Visualize(Camera* camera)
+{
 	if (enableDebugVoxel) {
+
+		uint32_t workGroupSize = (mVoxelDims + 7) / 8;
 		mDrawCallGeneratorProgram->bind();
+		mDrawCallGeneratorProgram->setInt("uVoxelDims", mVoxelDims);
+		mDrawCallGeneratorProgram->setFloat("uVoxelSpan", mUnitVoxelSize * mVoxelDims * 0.5f);
+		mDrawCallGeneratorProgram->setFloat("uUnitVoxelSize", mUnitVoxelSize);
+		mDrawCallGeneratorProgram->setVec4("frustumPlanes", (float*)camera->frustumPlanes.data(), 6);
+
 		mDrawCallGeneratorProgram->setTexture(0, voxelTexture->handle, GL_READ_ONLY, voxelTexture->internalFormat, true);
 		mDrawCallGeneratorProgram->setBuffer(1, mDrawCommandBuffer->handle);
 		mDrawCallGeneratorProgram->setAtomicCounterBuffer(2, mDrawCountBuffer->handle);
@@ -101,18 +114,15 @@ void Voxelizer::Generate(Camera* camera, std::vector<MeshGroup>& meshes)
 		mDrawCallGeneratorProgram->dispatch(workGroupSize, workGroupSize, workGroupSize);
 		mDrawCallGeneratorProgram->unbind();
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
-	}
-}
 
-void Voxelizer::Visualize(Camera* camera)
-{
-	if (enableDebugVoxel) {
 		mVisualizerProgram->bind();
-		uint32_t* count = (uint32_t*)glMapNamedBuffer(mDrawCountBuffer->handle, GL_WRITE_ONLY);
+
+		uint32_t* count = (uint32_t*)glMapNamedBuffer(mDrawCountBuffer->handle, GL_READ_WRITE);
 		mTotalVoxels = count[0];
 		// Reset the count for next frame
 		count[0] = 0;
 		glUnmapNamedBuffer(mDrawCountBuffer->handle);
+
 		glm::mat4 VP = camera->GetViewProjectionMatrix();
 		mVisualizerProgram->setMat4("uVP", &VP[0][0]);
 
@@ -130,13 +140,20 @@ void Voxelizer::Visualize(Camera* camera)
 void Voxelizer::AddUI()
 {
 	static float layer = 0.0f;
-	static int channel = 4;
+	static int channel = 0;
 	ImGui::Text("Voxel Count: %d", mTotalVoxels);
-	if (ImGui::SliderFloat("VoxelSize", &mUnitVoxelSize, 0.1f, 1.0f))
-		updateVoxelSpaceTransform();
+	if (ImGui::SliderFloat("VoxelSize", &mUnitVoxelSize, 0.01f, 1.0f)) {
+		mRegenerateVoxelData = true;
+	}
 
 	ImGui::Checkbox("Show Voxels", &enableDebugVoxel);
-	ImGuiService::SelectableTexture3D(voxelTexture->handle, ImVec2{ 512, 512 }, &layer, &channel, 4);
+
+	static bool showTexture = false;
+	ImGui::Checkbox("Show Texture", &showTexture);
+	if (showTexture) {
+		ImGui::Text("3D Texture");
+		ImGuiService::SelectableTexture3D(voxelTexture->handle, ImVec2{ 512, 512 }, &layer, &channel, 1);
+	}
 }
 
 void Voxelizer::Destroy()
@@ -149,10 +166,4 @@ void Voxelizer::Destroy()
 	mClearTextureProgram->destroy();
 	framebuffer->destroy();
 	voxelTexture->destroy();
-}
-
-void Voxelizer::updateVoxelSpaceTransform()
-{
-	float halfDims = mVoxelDims * 0.5f * mUnitVoxelSize;
-	mVoxelSpaceTransform = glm::ortho(-halfDims, halfDims, -halfDims, halfDims, halfDims, -halfDims);
 }

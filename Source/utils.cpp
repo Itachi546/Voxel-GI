@@ -63,6 +63,24 @@ namespace Utils {
         return image;
     }
 
+    bool FrustumBoxIntersection(const glm::vec3& min, const glm::vec3& max, glm::vec4* frustumPlanes)
+    {
+        glm::vec3 p;
+        for (int i = 0; i < 6; ++i) {
+            p = min;
+            if (frustumPlanes[i].x > 0)
+                p.x = max.x;
+            if (frustumPlanes[i].y > 0)
+                p.y = max.y;
+            if (frustumPlanes[i].z > 0)
+                p.z = max.z;
+
+            if (glm::dot(glm::vec3(frustumPlanes[i]), p) + frustumPlanes[i].w < 0.0f)
+                return false;
+        }
+        return true;
+    }
+
     void FreeImage(void* buffer)
     {
         stbi_image_free(buffer);

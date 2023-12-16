@@ -14,7 +14,7 @@ layout(std430, binding = 0) buffer DrawData {
    InstanceData instanceData[];
 };
 
-out vec3 vVoxelSpacePos;
+out flat vec3 vVoxelSpacePos;
 
 vec3 toWorldSpace(vec3 p) {
     vec3 pClip = (p / uVoxelDims) * 2.0f - 1.0f;

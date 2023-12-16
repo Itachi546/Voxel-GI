@@ -104,7 +104,7 @@ namespace DebugDraw {
 		gLineBufferOffset += 12;
 	}
 
-	void Render(glm::mat4 VP, glm::vec2 windowSize) {
+	void Render(glm::mat4 VP) {
 		if (gLineBufferOffset == 0) return;
 		glUnmapNamedBuffer(gLineBuffer.handle);
 		gLineBufferPtr = nullptr;

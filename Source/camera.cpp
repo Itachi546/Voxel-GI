@@ -26,6 +26,26 @@ void Camera::Update(float dt)
 
 	CalculateView();
 	mVP = mProjection * mView;
+
+	glm::mat4 vpT = glm::transpose(mVP);
+	// Left
+	frustumPlanes[0] = vpT[3] + vpT[0];
+	// Right
+	frustumPlanes[1] = vpT[3] - vpT[0];
+	// Top
+	frustumPlanes[2] = vpT[3] - vpT[1];
+	// Bottom
+	frustumPlanes[3] = vpT[3] + vpT[1];
+	// Near
+	frustumPlanes[4] = vpT[3] + vpT[2];
+	// Far
+	frustumPlanes[5] = vpT[3] - vpT[2];
+	/*
+	for (int i = 0; i < frustumPlanes.size(); ++i) {
+		float len = glm::length(glm::vec3(frustumPlanes[i]));
+		frustumPlanes[i] /= len;
+	}
+	*/
 }
 
 glm::vec4 Camera::ComputeNDCCoordinate(const glm::vec3& p)
@@ -67,4 +87,5 @@ void Camera::CalculateView()
 	mRight   = glm::vec3(mView[0][0], mView[1][0], mView[2][0]);
 	mUp      = glm::vec3(mView[0][1], mView[1][1], mView[2][1]);
 	mForward = glm::vec3(mView[0][2], mView[1][2], mView[2][2]);
+
 }

@@ -20,5 +20,6 @@ namespace Utils {
 
 	float* LoadImageFloat(const char* filename, int* width, int* height, int* nChannel);
 
+	bool FrustumBoxIntersection(const glm::vec3& min, const glm::vec3& max, glm::vec4* frustumPlanes);
 	void FreeImage(void* buffer);
 }

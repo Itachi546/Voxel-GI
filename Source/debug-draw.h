@@ -18,7 +18,7 @@ namespace DebugDraw {
 
 	void AddRect(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color = { 1.0f, 0.0f, 1.0f });
 
-	void Render(glm::mat4 VP, glm::vec2 windowSize);
+	void Render(glm::mat4 VP);
 
 	void Shutdown();
 }

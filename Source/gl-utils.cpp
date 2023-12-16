@@ -214,9 +214,9 @@ void GLComputeProgram::setVec3(const std::string& name, float* val)
 	glUniform3fv(glGetUniformLocation(handle_, name.c_str()), 1, val);
 }
 
-void GLComputeProgram::setVec4(const std::string& name, float* val)
+void GLComputeProgram::setVec4(const std::string& name, float* val, int count)
 {
-	glUniform4fv(glGetUniformLocation(handle_, name.c_str()), 1, val);
+	glUniform4fv(glGetUniformLocation(handle_, name.c_str()), count, val);
 }
 
 void GLComputeProgram::dispatch(uint32_t workGroupX, uint32_t workGroupY, uint32_t workGroupZ) const

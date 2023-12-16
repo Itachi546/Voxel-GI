@@ -2,6 +2,7 @@
 
 #include "glm-includes.h"
 
+#include <array>
 #include <memory>
 
 class Camera
@@ -94,6 +95,7 @@ public:
 	glm::vec3 GetForward() { return mForward; }
 	glm::vec3 GetPosition() const { return mPosition; }
 	
+	std::array<glm::vec4, 6> frustumPlanes;
 private:
 
 	glm::vec3 mPosition;
