@@ -8,5 +8,5 @@ in flat vec3 vVoxelSpacePos;
 
 void main() {
    vec3 color = imageLoad(uVolumeTexture, ivec3(vVoxelSpacePos)).rgb;
-   fragColor = vec4(color, 1.0f);
+   fragColor = vec4(pow(color, vec3(0.4545)), 1.0f);
 }

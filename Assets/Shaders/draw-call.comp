@@ -18,6 +18,7 @@ uniform vec4 frustumPlanes[6];
 uniform int uVoxelDims;
 uniform float uVoxelSpan;
 uniform float uUnitVoxelSize;
+uniform int mipLevel;
 
 bool IntersectFrustum(vec3 aabbMin, vec3 aabbMax)
 {

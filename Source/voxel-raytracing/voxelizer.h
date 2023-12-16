@@ -37,6 +37,6 @@ private:
 
 	std::unique_ptr<GLMesh> mCubeMesh;
 	uint32_t mTotalVoxels = 0;
-
+	int mDebugMipLevel = 0;
 	bool mRegenerateVoxelData = true;
 };
