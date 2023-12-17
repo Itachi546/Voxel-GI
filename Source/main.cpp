@@ -5,9 +5,12 @@
 #include "camera.h"
 #include "mesh.h"
 #include "debug-draw.h"
+#include "gpu-query.h"
 
 #include "voxel-raytracing/voxelizer.h"
 #include <iostream>
+
+#include "depth-prepass.h"
 
 struct WindowProps {
 	GLFWwindow* window;
@@ -145,6 +148,7 @@ int main() {
 
 	DebugDraw::Initialize();
 	ImGuiService::Initialize(window);
+	GpuProfiler::Initialize();
 
 	float startTime = (float)glfwGetTime();
 	float dt = 1.0f / 60.0f;
@@ -155,19 +159,22 @@ int main() {
 
 	std::vector<MeshGroup> scene;
 	scene.push_back(MeshGroup{});
-	//LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/Sponza/Sponza.gltf", &scene.back());
-	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/dragon/dragon.glb", &scene.back());
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/Sponza/Sponza.gltf", &scene.back());
+	//LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/dragon/dragon.glb", &scene.back());
 	const AABB& debugAABB = scene[0].aabbs[0];
 
 	Voxelizer voxelizer;
-	voxelizer.Init(512);
+	voxelizer.Init(256, 0.1f);
 
 	TextureCreateInfo colorAttachment = { gFBOWidth, gFBOHeight };
 	TextureCreateInfo depthAttachment;
 	InitializeDepthTexture(&depthAttachment, gFBOWidth, gFBOHeight);
 
+	DepthPrePass depthPrePass;
+	depthPrePass.Initialize(gFBOWidth, gFBOHeight);
+
 	GLFramebuffer mainFBO;
-	mainFBO.init({ Attachment{ 0, &colorAttachment } }, &depthAttachment);
+	mainFBO.init({ Attachment{ 0, &colorAttachment } }, depthPrePass.GetDepthAttachment());
 
 	GLProgram mainProgram;
 	mainProgram.init(GLShader("Assets/Shaders/mesh.vert"), GLShader("Assets/Shaders/mesh.frag"));
@@ -183,20 +190,29 @@ int main() {
 		ImGuiService::RenderDockSpace();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		GpuProfiler::Begin("Total Time GPU");
+		// Voxelizer Pass
 		voxelizer.Generate(&gCamera, scene);
 
+		// Depth Prepass
+		if(!voxelizer.enableDebugVoxel)
+			depthPrePass.Render(&gCamera, scene);
+
+		// Main Pass
 		if (wireframeMode) 
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		else
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-		glm::mat4 VP = gCamera.GetViewProjectionMatrix();
+		GpuProfiler::Begin("Final Pass");
 		mainFBO.bind();
 		mainFBO.setClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 		mainFBO.setViewport(gFBOWidth, gFBOHeight);
 		mainFBO.clear(true);
 
 		voxelizer.Visualize(&gCamera);
+		glm::mat4 VP = gCamera.GetViewProjectionMatrix();
 
 		if (!voxelizer.enableDebugVoxel) {
 			mainProgram.bind();
@@ -208,6 +224,8 @@ int main() {
 
 		DebugDraw::Render(VP);
 		mainFBO.unbind();
+		GpuProfiler::End();
+
 		ImGui::Begin("MainWindow");
 
 		MoveCamera(dt, ImGui::IsWindowFocused());
@@ -229,6 +247,7 @@ int main() {
 		ImGui::End();
 
 		ImGui::Begin("Options");
+		GpuProfiler::AddUI();
 		ImGui::Checkbox("Wireframe", &wireframeMode);
 
 		voxelizer.AddUI();
@@ -238,6 +257,10 @@ int main() {
 
 		glfwSwapBuffers(window);
 
+		GpuProfiler::End();
+
+		GpuProfiler::Reset();
+
 		float endTime = (float)glfwGetTime();
 		dt = endTime - startTime;
 		startTime = endTime;
@@ -245,6 +268,8 @@ int main() {
 		gWindowProps.mDx = 0.0f;
 		gWindowProps.mDy = 0.0f;
 	}
+	mainProgram.destroy();
+	mainFBO.destroy();
 	DebugDraw::Shutdown();
 	ImGuiService::Shutdown();
 

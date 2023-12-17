@@ -148,7 +148,7 @@ struct TextureCreateInfo {
 	GLuint internalFormat = GL_RGBA8;
 	GLuint target = GL_TEXTURE_2D;
 	GLuint dataType = GL_UNSIGNED_BYTE;
-	bool generateMipmap = false;
+	int mipLevels = 1;
 
 	GLuint wrapType = GL_CLAMP_TO_EDGE;
 	GLuint minFilterType = GL_LINEAR;
@@ -188,6 +188,7 @@ struct Attachment {
 
 struct GLFramebuffer {
 	void init(const std::vector<Attachment>& attachments, TextureCreateInfo* depthAttachment);
+	void init(const std::vector<Attachment>& attachments, GLuint depthTexture);
 
 	void bind() {
 		glBindFramebuffer(GL_FRAMEBUFFER, handle);
@@ -216,7 +217,11 @@ struct GLFramebuffer {
 	GLuint handle;
 	std::vector<GLuint> attachments;
 	GLuint depthAttachment;
-	
+	bool hasDepthAttachment = false;
+
+private:
+	void initializeColorAttachment(const std::vector<Attachment>& attachmentInfo);
+	void initializeDepthAttachment(TextureCreateInfo* depthAttachmentInfo);
 };
 
 struct GLMesh {

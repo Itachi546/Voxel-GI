@@ -230,11 +230,8 @@ void GLBuffer::init(void* data, uint32_t size, GLbitfield flags)
 	glNamedBufferStorage(handle, size, data, flags);
 }
 
-void GLFramebuffer::init(const std::vector<Attachment>& attachments, TextureCreateInfo* depthAttachmentInfo)
+void GLFramebuffer::initializeColorAttachment(const std::vector<Attachment>& attachments)
 {
-	glGenFramebuffers(1, &handle);
-	glBindFramebuffer(GL_FRAMEBUFFER, handle);
-
 	this->attachments.resize(attachments.size());
 	for (auto& attachment : attachments) {
 		GLTexture texture;
@@ -245,16 +242,29 @@ void GLFramebuffer::init(const std::vector<Attachment>& attachments, TextureCrea
 			attachment.attachmentInfo->target,
 			texture.handle, 0);
 	}
+}
 
-	if (depthAttachmentInfo) {
-		GLTexture texture;
-		texture.init(depthAttachmentInfo);
-		depthAttachment = texture.handle;
-		glFramebufferTexture2D(GL_FRAMEBUFFER,
-			GL_DEPTH_STENCIL_ATTACHMENT,
-			GL_TEXTURE_2D,
-			texture.handle, 0);
-	}
+void GLFramebuffer::initializeDepthAttachment(TextureCreateInfo* depthAttachmentInfo)
+{
+	hasDepthAttachment = true;
+	GLTexture texture;
+	texture.init(depthAttachmentInfo);
+	depthAttachment = texture.handle;
+	glFramebufferTexture2D(GL_FRAMEBUFFER,
+		GL_DEPTH_STENCIL_ATTACHMENT,
+		GL_TEXTURE_2D,
+		texture.handle, 0);
+}
+void GLFramebuffer::init(const std::vector<Attachment>& attachments, TextureCreateInfo* depthAttachmentInfo)
+{
+	glGenFramebuffers(1, &handle);
+	glBindFramebuffer(GL_FRAMEBUFFER, handle);
+
+	if (attachments.size() > 0)
+		initializeColorAttachment(attachments);
+
+	if (depthAttachmentInfo)
+		initializeDepthAttachment(depthAttachmentInfo);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		logger::Error("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
@@ -263,9 +273,35 @@ void GLFramebuffer::init(const std::vector<Attachment>& attachments, TextureCrea
 
 }
 
+void GLFramebuffer::init(const std::vector<Attachment>& attachments, GLuint depthTexture)
+{
+	glGenFramebuffers(1, &handle);
+	glBindFramebuffer(GL_FRAMEBUFFER, handle);
+
+	if (attachments.size() > 0)
+		initializeColorAttachment(attachments);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER,
+		GL_DEPTH_STENCIL_ATTACHMENT,
+		GL_TEXTURE_2D,
+		depthTexture, 0);
+	this->depthAttachment = depthTexture;
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		logger::Error("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+}
+
+
 void GLFramebuffer::destroy()
 {
 	glDeleteFramebuffers(1, &handle);
+	for (auto& attachment : attachments)
+		glDeleteTextures(1, &attachment);
+	if(hasDepthAttachment)
+		glDeleteTextures(1, &depthAttachment);
 }
 
 void GLTexture::init(TextureCreateInfo* createInfo, void* data)
@@ -279,12 +315,9 @@ void GLTexture::init(TextureCreateInfo* createInfo, void* data)
 	glGenTextures(1, &handle);
 	glBindTexture(target, handle);
 
-	glTexParameteri(target, GL_TEXTURE_MIN_FILTER, createInfo->minFilterType);
-	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, createInfo->magFilterType);
-	glTexParameteri(target, GL_TEXTURE_WRAP_S, createInfo->wrapType);
-	glTexParameteri(target, GL_TEXTURE_WRAP_T, createInfo->wrapType);
-
 	if (target == GL_TEXTURE_2D) {
+		glTexStorage2D(target, createInfo->mipLevels, createInfo->internalFormat, width, height);
+/*
 		glTexImage2D(target,
 			0,
 			createInfo->internalFormat,
@@ -293,9 +326,11 @@ void GLTexture::init(TextureCreateInfo* createInfo, void* data)
 			0,
 			createInfo->format,
 			createInfo->dataType, data);
+	*/
 	}
 	else {
-		glTexParameteri(target, GL_TEXTURE_WRAP_R, createInfo->wrapType);
+		glTexStorage3D(target, createInfo->mipLevels, createInfo->internalFormat, width, height, depth);
+		/*
 		glTexImage3D(target,
 			0, 
 			createInfo->internalFormat,
@@ -306,7 +341,15 @@ void GLTexture::init(TextureCreateInfo* createInfo, void* data)
 			createInfo->format,
 			createInfo->dataType,
 			data);
+	*/
 	}
-	if (createInfo->generateMipmap)
+	if (createInfo->mipLevels > 1) {
 		glGenerateMipmap(target);
+		glTexParameteri(target, GL_TEXTURE_WRAP_R, createInfo->wrapType);
+	}
+
+	glTexParameteri(target, GL_TEXTURE_MIN_FILTER, createInfo->minFilterType);
+	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, createInfo->magFilterType);
+	glTexParameteri(target, GL_TEXTURE_WRAP_S, createInfo->wrapType);
+	glTexParameteri(target, GL_TEXTURE_WRAP_T, createInfo->wrapType);
 }

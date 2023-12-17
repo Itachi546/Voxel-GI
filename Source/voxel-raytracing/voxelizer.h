@@ -35,6 +35,7 @@ private:
 	uint32_t mVoxelDims;
 	float mUnitVoxelSize;
 
+	const uint32_t MAX_VOXELS_ALLOCATED = 1'000'000;
 	std::unique_ptr<GLMesh> mCubeMesh;
 	uint32_t mTotalVoxels = 0;
 	int mDebugMipLevel = 0;

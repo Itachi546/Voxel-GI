@@ -39,6 +39,12 @@
     <ClCompile Include="Source\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\depth-prepass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\gpu-query.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\camera.h">
@@ -80,6 +86,12 @@
     <ClInclude Include="Source\tinygltf\stb_image_write.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\depth-prepass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\gpu-query.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\line.frag" />
@@ -93,5 +105,7 @@
     <None Include="Assets\Shaders\draw-call.comp" />
     <None Include="Assets\Shaders\mesh.frag" />
     <None Include="Assets\Shaders\mesh.vert" />
+    <None Include="Assets\Shaders\depth-prepass.frag" />
+    <None Include="Assets\Shaders\depth-prepass.vert" />
   </ItemGroup>
 </Project>

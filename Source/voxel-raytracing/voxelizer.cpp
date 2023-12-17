@@ -5,6 +5,7 @@
 #include "imgui-service.h"
 #include "logger.h"
 #include "utils.h"
+#include "gpu-query.h"
 
 void Voxelizer::Init(uint32_t voxelDims, float unitVoxelSize)
 {
@@ -31,7 +32,7 @@ void Voxelizer::Init(uint32_t voxelDims, float unitVoxelSize)
 
 	mDrawCommandBuffer = std::make_unique<GLBuffer>();
 	// Support only 10'000 voxels
-	uint32_t bufferSize = sizeof(float) * 3 * 2'000'000;
+	uint32_t bufferSize = sizeof(float) * 3 * MAX_VOXELS_ALLOCATED;
 	mDrawCommandBuffer->init(nullptr, bufferSize, 0);
 
 	mDrawCountBuffer = std::make_unique<GLBuffer>();
@@ -44,6 +45,8 @@ void Voxelizer::Init(uint32_t voxelDims, float unitVoxelSize)
 	framebuffer->init({ Attachment{0, &colorAttachment} }, nullptr);
 
 	TextureCreateInfo volumeTextureCreateInfo{ voxelDims, voxelDims, voxelDims, GL_RGBA, GL_RGBA8, GL_TEXTURE_3D, GL_UNSIGNED_BYTE};
+	volumeTextureCreateInfo.mipLevels = 4;
+
 	voxelTexture = std::make_unique<GLTexture>();
 	voxelTexture->init(&volumeTextureCreateInfo);
 
@@ -56,17 +59,21 @@ void Voxelizer::Generate(Camera* camera, std::vector<MeshGroup>& meshes)
 	if (mRegenerateVoxelData == false) return;
 	mRegenerateVoxelData = false;
 
+	GpuProfiler::Begin("Clear Voxel Texture");
+
 	mClearTextureProgram->bind();
 	mClearTextureProgram->setTexture(0, voxelTexture->handle, GL_WRITE_ONLY, voxelTexture->internalFormat, true);
 	uint32_t workGroupSize = (mVoxelDims + 7) / 8;
 	mClearTextureProgram->dispatch(workGroupSize, workGroupSize, workGroupSize);
 	mClearTextureProgram->unbind();
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	GpuProfiler::End();
 
 	glDisable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
+	GpuProfiler::Begin("Voxelize Pass");
 	framebuffer->bind();
 	framebuffer->setClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	framebuffer->setViewport(mVoxelDims, mVoxelDims);
@@ -91,14 +98,19 @@ void Voxelizer::Generate(Camera* camera, std::vector<MeshGroup>& meshes)
 	glEnable(GL_DEPTH_TEST);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	GpuProfiler::End();
 
+	GpuProfiler::Begin("Texture Mipmap Generation");
 	glBindTexture(GL_TEXTURE_3D, voxelTexture->handle);
 	glGenerateMipmap(GL_TEXTURE_3D);
+	GpuProfiler::End();
+
 }
 
 void Voxelizer::Visualize(Camera* camera)
 {
 	if (enableDebugVoxel) {
+		GpuProfiler::Begin("Voxel Instance Data Generation");
 		int voxelDims = mVoxelDims >> mDebugMipLevel;
 		float unitVoxelSize = (float)(mUnitVoxelSize * std::pow(2.0f, mDebugMipLevel));
 
@@ -116,6 +128,7 @@ void Voxelizer::Visualize(Camera* camera)
 		mDrawCallGeneratorProgram->dispatch(workGroupSize, workGroupSize, workGroupSize);
 		mDrawCallGeneratorProgram->unbind();
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
+		GpuProfiler::End();
 
 		mVisualizerProgram->bind();
 
@@ -144,10 +157,15 @@ void Voxelizer::AddUI()
 	static float layer = 0.0f;
 	static int channel = 4;
 	ImGui::Text("Voxel Count: %d", mTotalVoxels);
-	if (ImGui::DragFloat("VoxelSize", &mUnitVoxelSize, 0.01f, 1.0f)) {
+	if (mTotalVoxels > MAX_VOXELS_ALLOCATED) {
+		static const ImVec4 RED{ 1.0f, 0.0f, 0.0f, 1.0f };
+		ImGui::TextColored(RED, "Insufficient memory to render additional: %d voxels.", mTotalVoxels - MAX_VOXELS_ALLOCATED);
+		ImGui::TextColored(RED, "Select lower mip level");
+	}
+	if (ImGui::DragFloat("VoxelSize", &mUnitVoxelSize, 0.01f, 0.01f, 1.0f)) {
 		mRegenerateVoxelData = true;
 	}
-	ImGui::SliderInt("Debug MipLevel", &mDebugMipLevel, 0, 8);
+	ImGui::SliderInt("Debug MipLevel", &mDebugMipLevel, 0, 3);
 
 	ImGui::Checkbox("Show Voxels", &enableDebugVoxel);
 
@@ -155,7 +173,7 @@ void Voxelizer::AddUI()
 	ImGui::Checkbox("Show Texture", &showTexture);
 	if (showTexture) {
 		ImGui::Text("3D Texture");
-		ImGuiService::SelectableTexture3D(voxelTexture->handle, ImVec2{ 512, 512 }, &layer, &channel, 4);
+		ImGuiService::SelectableTexture3D(voxelTexture->handle, ImVec2{ (float)mVoxelDims, (float)mVoxelDims }, &layer, &channel, 4);
 	}
 }
 
