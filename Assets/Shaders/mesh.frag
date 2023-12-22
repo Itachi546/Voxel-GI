@@ -37,11 +37,14 @@ uniform vec3 uVoxelDims;
 uniform vec3 uCameraPosition;
 uniform vec3 uLightPosition;
 
-const float CONE_OFFSET = uVoxelDims.y * sqrt(2.0f);
-const float MAX_DISTANCE = 128.0f;
+const float SCALING = uVoxelDims.y / uVoxelDims.y;
+const float CONE_OFFSET = uVoxelDims.y * sqrt(3.0f) * SCALING;
+const float STEP_SIZE = uVoxelDims.y * SCALING;
+const float INV_VOXEL_DIMS = 1.0f / uVoxelDims.y;
+const float	HALF_SIZE = uVoxelDims.x * uVoxelDims.y * 0.5f;
 
-vec3 ToVoxelSpace(vec3 p, float halfSize) {
-   return (p / halfSize) * 0.5f + 0.5f;
+vec3 ToVoxelSpace(vec3 p) {
+   return (p / HALF_SIZE);
 }
 
 const float E = 0.001;
@@ -51,32 +54,28 @@ bool IsInsideCube(vec3 uv) {
 }
 
 vec3 coneTrace(vec3 direction, float aperture) {
-   float invVoxelDims = 1.0f / uVoxelDims.y;
-   direction = normalize(direction);
-   float stepSize = uVoxelDims.y;
-   vec3 start = vWorldPos + CONE_OFFSET * direction;
+   vec3 origin = ToVoxelSpace(vWorldPos);
+   origin += CONE_OFFSET * direction;
 
-   float dist = uVoxelDims.y;
+   float dist = STEP_SIZE;
    const float coneCoefficient = 2.0f * tan(aperture *	0.5f);
-
    vec4 Lv = vec4(0.0f);
-   const float maxDistance = MAX_DISTANCE * uVoxelDims.y;
-   const float halfSize = uVoxelDims.x * uVoxelDims.y * 0.5f;
-   while(dist < maxDistance && Lv.a <= 1.0f) {
-      float diameter = max(uVoxelDims.y, dist * coneCoefficient);
-      float mip = log2(diameter * invVoxelDims);
+   const float maxDistance = distance(origin, vec3(1.0f));
 
-	  vec3 position	= start	+ dist * direction;
-      vec3 uv = ToVoxelSpace(position, halfSize);
-      if(!IsInsideCube(uv) || mip > 5.0f) break;
+   while(dist < maxDistance && Lv.a < 1.0f) {
+      float diameter = dist * coneCoefficient;
+      float mip = log2(diameter * INV_VOXEL_DIMS);
 
-      vec4 sam = textureLod(uVolumeTexture, uv, mip);
+	  vec3 position	= origin + dist * direction;
+      if(!IsInsideCube(position) || mip > 5.0f) break;
+
+      vec4 sam = textureLod(uVolumeTexture, position * 0.5 + 0.5, mip);
       if(sam.a > 0.0f) {
         float a = 1.0f - Lv.a;
 		Lv.rgb += a	* sam.rgb;
 		Lv.a +=	a *	sam.a;
       }
-      dist += diameter * stepSize * 0.5f;
+      dist += diameter * STEP_SIZE * 0.5f;
    }
    return max(Lv.rgb, 0.0);
 }
@@ -126,7 +125,10 @@ void main() {
    col += calculateDiffuseIndirect().rgb * 0.3f;
 
    vec3 viewDir = normalize(vWorldPos - uCameraPosition);
-   col += calculateSpecularReflection(viewDir, material.roughness) * material.metallic;
+
+   if(material.metallic > 0.001f) 
+      col += calculateSpecularReflection(viewDir, material.roughness) * material.metallic;
+
    col /= (1.0f + col);
    col = pow(col, vec3(0.4545));
    fragColor = vec4(col, 1.0f);

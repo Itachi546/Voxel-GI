@@ -110,21 +110,22 @@ void MoveCamera(float dt, bool isWindowActive) {
 bool AddGameObjectUI(Scene* scene) {
 	bool needUpdate = false;
 	for (auto& meshGroup : scene->meshGroup) {
-		ImGui::Text("MeshGroup");
-		bool changed = false;
-		for (std::size_t i = 0; i < meshGroup.names.size(); ++i) {
-			ImGui::PushID(i);
-			if (ImGui::CollapsingHeader(meshGroup.names[i].c_str())) {
-				changed |= ImGui::ColorEdit3("Albedo", &meshGroup.materials[i].albedo[0]);
-				changed |= ImGui::ColorEdit3("Emissive", &meshGroup.materials[i].emissive[0]);
-				changed |= ImGui::SliderFloat("Metallic", &meshGroup.materials[i].metallic, 0.0f, 1.0f);
-				changed |= ImGui::SliderFloat("Roughness", &meshGroup.materials[i].roughness, 0.0f, 1.0f);
+		if (ImGui::CollapsingHeader("MeshGroup")) {
+			bool changed = false;
+			for (std::size_t i = 0; i < meshGroup.names.size(); ++i) {
+				ImGui::PushID((int)i);
+				if (ImGui::CollapsingHeader(meshGroup.names[i].c_str())) {
+					changed |= ImGui::ColorEdit3("Albedo", &meshGroup.materials[i].albedo[0]);
+					changed |= ImGui::ColorEdit3("Emissive", &meshGroup.materials[i].emissive[0]);
+					changed |= ImGui::SliderFloat("Metallic", &meshGroup.materials[i].metallic, 0.0f, 1.0f);
+					changed |= ImGui::SliderFloat("Roughness", &meshGroup.materials[i].roughness, 0.0f, 1.0f);
+				}
+				ImGui::PopID();
 			}
-			ImGui::PopID();
+			if (changed)
+				meshGroup.updateMaterials();
+			needUpdate |= changed;
 		}
-		if(changed)
-			meshGroup.updateMaterials();
-		needUpdate |= changed;
 	}
 	return needUpdate;
 }
@@ -142,6 +143,14 @@ void InitializeCornellBoxScene(Scene* scene) {
 			break;
 		}
 	}
+}
+
+void InitializeSponzaScene(Scene* scene) {
+	scene->lightPosition = glm::vec3(0.0f, 10.0f, -.5f);
+	scene->camera->SetPosition(glm::vec3(0.0f, 1.0f, 2.0f));
+	scene->meshGroup.push_back(MeshGroup{});
+	MeshGroup& sponza = scene->meshGroup.back();
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/sponza/sponza.gltf", &sponza);
 }
 
 int main() {
@@ -193,10 +202,10 @@ int main() {
 	Scene scene;
 	scene.camera = &gCamera;
 
-	InitializeCornellBoxScene(&scene);
+	InitializeSponzaScene(&scene);
 
 	Voxelizer voxelizer;
-	voxelizer.Init(64, 0.07f);
+	voxelizer.Init(256, 0.1f);
 
 	TextureCreateInfo colorAttachment = { gFBOWidth, gFBOHeight };
 	TextureCreateInfo depthAttachment;

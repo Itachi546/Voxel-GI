@@ -47,9 +47,9 @@ void main() {
    vec3 lightDir = gLightDirection / lightDist;
 
    float attenuation = 1.0f / (lightDist * lightDist);
-
    float diffuse = max(dot(normalize(gNormal), lightDir), 0.0f) * attenuation;
    vec3 col = diffuse * material.albedo.rgb;
+   col += material.emissive.rgb;
    
    if(IsInsideCube(gWorldPos)) {
      ivec3 voxelCoord = ivec3(gWorldPos * uVoxelDims.x);
