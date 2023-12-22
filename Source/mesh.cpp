@@ -100,6 +100,55 @@ static uint8_t* getBufferPtr(tinygltf::Model* model, const tinygltf::Accessor& a
 	return model->buffers[bufferView.buffer].data.data() + accessor.byteOffset + bufferView.byteOffset;
 }
 
+static void parseMaterial(tinygltf::Model* model, Material* component, uint32_t matIndex) {
+	if (matIndex == -1)
+		return;
+
+	tinygltf::Material& material = model->materials[matIndex];
+	//component->alphaCutoff = (float)material.alphaCutoff;
+	/*
+	if (material.alphaMode == "BLEND")
+		component->alphaMode = ALPHAMODE_BLEND;
+	else if (material.alphaMode == "MASK")
+		component->alphaMode = ALPHAMODE_MASK;
+		*/
+
+	// Parse Material value
+	tinygltf::PbrMetallicRoughness& pbr = material.pbrMetallicRoughness;
+	std::vector<double>& baseColor = pbr.baseColorFactor;
+	component->albedo = glm::vec4((float)baseColor[0], (float)baseColor[1], (float)baseColor[2], (float)baseColor[3]);
+	component->transparency = (float)baseColor[3];
+	component->metallic = (float)pbr.metallicFactor;
+	component->roughness = (float)pbr.roughnessFactor;
+	std::vector<double>& emissiveColor = material.emissiveFactor;
+	component->emissive = glm::vec4((float)emissiveColor[0], (float)emissiveColor[1], (float)emissiveColor[2], 1.0f);
+	/*
+	// Parse Material texture
+	auto loadTexture = [&](uint32_t index) {
+		tinygltf::Texture& texture = model->textures[index];
+		tinygltf::Image& image = model->images[texture.source];
+		const std::string& name = image.uri.length() == 0 ? image.name : image.uri;
+		return TextureCache::LoadTexture(name, image.width, image.height, image.image.data(), image.component, true);
+		};
+
+
+	if (pbr.baseColorTexture.index >= 0)
+		component->albedoMap = loadTexture(pbr.baseColorTexture.index);
+
+	if (pbr.metallicRoughnessTexture.index >= 0)
+		component->metallicMap = component->roughnessMap = loadTexture(pbr.metallicRoughnessTexture.index);
+
+	if (material.normalTexture.index >= 0)
+		component->normalMap = loadTexture(material.normalTexture.index);
+
+	if (material.occlusionTexture.index >= 0)
+		component->ambientOcclusionMap = loadTexture(material.occlusionTexture.index);
+
+	if (material.emissiveTexture.index >= 0)
+		component->emissiveMap = loadTexture(material.emissiveTexture.index);
+	 */
+}
+
 static void parseMesh(tinygltf::Model* model, tinygltf::Mesh& mesh, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, MeshGroup* meshGroup, const glm::mat4& transform) {
 	for (auto& primitive : mesh.primitives)
 	{
@@ -181,6 +230,12 @@ static void parseMesh(tinygltf::Model* model, tinygltf::Mesh& mesh, std::vector<
 		drawCommand.baseVertex_ = vertexOffset / sizeof(Vertex);
 		drawCommand.baseInstance_ = 0;
 		meshGroup->drawCommands.push_back(std::move(drawCommand));
+
+		Material material = {};
+		std::string materialName = model->materials[primitive.material].name;
+		meshGroup->names.push_back(materialName);
+		parseMaterial(model, &material, primitive.material);
+		meshGroup->materials.push_back(std::move(material));
 	}
 }
 
@@ -253,6 +308,9 @@ void LoadMesh(const std::string& filename, MeshGroup* meshGroup) {
 	uint32_t drawCommandSize = (uint32_t)(meshGroup->drawCommands.size() * sizeof(DrawElementsIndirectCommand));
 	meshGroup->drawIndirectBuffer.init(meshGroup->drawCommands.data(), drawCommandSize, 0);
 
+	uint32_t materialSize = (uint32_t)(meshGroup->materials.size() * sizeof(Material));
+	meshGroup->materialBuffer.init(meshGroup->materials.data(), materialSize, GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_WRITE_BIT);
+
 	glGenVertexArrays(1, &meshGroup->vao);
 	glBindVertexArray(meshGroup->vao);
 
@@ -269,10 +327,25 @@ void LoadMesh(const std::string& filename, MeshGroup* meshGroup) {
 	glBindVertexArray(0);
 }
 
+void MeshGroup::updateTransforms()
+{
+	uint32_t dataSize = (uint32_t)(transforms.size() * sizeof(glm::mat4));
+	glNamedBufferData(transformBuffer.handle, dataSize, transforms.data(), 0);
+}
+
+void MeshGroup::updateMaterials()
+{
+	uint32_t dataSize = (uint32_t)materials.size() * sizeof(Material);
+	Material* material = (Material*)glMapNamedBuffer(materialBuffer.handle, GL_WRITE_ONLY);
+	std::memcpy(material, materials.data(), dataSize);
+	glUnmapNamedBuffer(materialBuffer.handle);
+}
+
 void MeshGroup::Draw(GLProgram* program)
 {
 	glBindVertexArray(vao);
-	program->setBuffer(0, transformBuffer.handle);
+	program->setBuffer(1, transformBuffer.handle);
+	program->setBuffer(2, materialBuffer.handle);
 	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, (uint32_t)drawCommands.size(), 0);
 	glBindVertexArray(0);
 }

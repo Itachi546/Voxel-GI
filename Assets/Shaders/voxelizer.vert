@@ -6,7 +6,7 @@ layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 uv;
 
-layout(binding = 0) readonly buffer TransformData
+layout(binding = 1) readonly buffer TransformData
 {
    mat4 aTransformData[];
 };
@@ -14,6 +14,7 @@ layout(binding = 0) readonly buffer TransformData
 out vec3 vWorldPos;
 out vec3 vNormal;
 out vec2 vUV;
+out flat int vMaterialIndex;
 
 void main() {
     mat4 modelMatrix = aTransformData[gl_DrawIDARB];
@@ -23,6 +24,6 @@ void main() {
     vWorldPos = worldPos.xyz;
     vNormal = normalize(normalTransform * normal);
     vUV = uv;
-
+    vMaterialIndex = gl_DrawIDARB;
     gl_Position = worldPos;
 }

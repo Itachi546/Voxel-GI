@@ -7,7 +7,6 @@
 
 class Camera
 {
-	friend class Scene;
 public:
 	Camera();
 

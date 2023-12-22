@@ -6,12 +6,16 @@ layout(triangle_strip, max_vertices = 3) out;
 in vec3 vNormal[];
 in vec3 vWorldPos[];
 in vec2 vUV[];
+in flat int vMaterialIndex[];
 
 out vec3 gWorldPos;
 out vec3 gNormal;
 out vec2 gUV;
+out vec3 gLightDirection;
+out flat int gMaterialIndex;
 
 uniform mat4 uVoxelSpaceTransform;
+uniform vec3 uLightPosition;
 // X - voxelDimension, Y- voxelSize
 uniform vec2 uVoxelDims;
 
@@ -40,8 +44,10 @@ void main() {
       projectedPosition.z = 0.0f;
 
       gWorldPos = voxelSpacePosition * 0.5 + 0.5; 
+      gLightDirection = uLightPosition - vWorldPos[i];
       gUV = vUV[i];
       gNormal = faceNormal;
+      gMaterialIndex = vMaterialIndex[i];
 
       gl_Position = vec4(projectedPosition, 1.0f);
       EmitVertex();

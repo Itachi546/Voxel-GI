@@ -21,21 +21,27 @@ void DepthPrePass::Initialize(uint32_t width, uint32_t height)
 	glGenQueries(1, &mTimerQuery);
 }
 
-void DepthPrePass::Render(Camera* camera, std::vector<MeshGroup>& scene)
+void DepthPrePass::Render(Scene* scene)
 {
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthFunc(GL_LEQUAL);
+
 	GpuProfiler::Begin("Depth Prepass");
 	mFramebuffer->bind();
 	mFramebuffer->setViewport(mWidth, mHeight);
 	mFramebuffer->clear(true);
 
 	mShader->bind();
-	glm::mat4 VP = camera->GetViewProjectionMatrix();
+	glm::mat4 VP = scene->camera->GetViewProjectionMatrix();
 	mShader->setMat4("uVP", &VP[0][0]);
-	for (auto& meshGroup : scene)
+	for (auto& meshGroup : scene->meshGroup)
 		meshGroup.Draw(mShader.get());
 	mShader->unbind();
 	mFramebuffer->unbind();
 	GpuProfiler::End();
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 }
 
 unsigned int DepthPrePass::GetDepthAttachment()

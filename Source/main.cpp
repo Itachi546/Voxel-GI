@@ -87,7 +87,7 @@ void MoveCamera(float dt, bool isWindowActive) {
 	if (gWindowProps.mouseDown && isWindowActive)
 		gCamera.Rotate(-gWindowProps.mDy, -gWindowProps.mDx, dt);
 
-	float walkSpeed = dt * 5.0f;
+	float walkSpeed = dt * 1.0f;
 	if (glfwGetKey(gWindowProps.window, GLFW_KEY_LEFT_SHIFT) != GLFW_RELEASE)
 		walkSpeed *= 4.0f;
 
@@ -107,6 +107,42 @@ void MoveCamera(float dt, bool isWindowActive) {
 		gCamera.Lift(-walkSpeed);
 }
 
+bool AddGameObjectUI(Scene* scene) {
+	bool needUpdate = false;
+	for (auto& meshGroup : scene->meshGroup) {
+		ImGui::Text("MeshGroup");
+		bool changed = false;
+		for (std::size_t i = 0; i < meshGroup.names.size(); ++i) {
+			ImGui::PushID(i);
+			if (ImGui::CollapsingHeader(meshGroup.names[i].c_str())) {
+				changed |= ImGui::ColorEdit3("Albedo", &meshGroup.materials[i].albedo[0]);
+				changed |= ImGui::ColorEdit3("Emissive", &meshGroup.materials[i].emissive[0]);
+				changed |= ImGui::SliderFloat("Metallic", &meshGroup.materials[i].metallic, 0.0f, 1.0f);
+				changed |= ImGui::SliderFloat("Roughness", &meshGroup.materials[i].roughness, 0.0f, 1.0f);
+			}
+			ImGui::PopID();
+		}
+		if(changed)
+			meshGroup.updateMaterials();
+		needUpdate |= changed;
+	}
+	return needUpdate;
+}
+
+void InitializeCornellBoxScene(Scene* scene) {
+	scene->lightPosition = glm::vec3(0.0f, 1.0f, -.5f);
+	scene->camera->SetPosition(glm::vec3(0.0f, 1.0f, 2.0f));
+	scene->meshGroup.push_back(MeshGroup{});
+	MeshGroup& cornellBox = scene->meshGroup.back();
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/cornell-box/cornell-dragon.gltf", &cornellBox);
+
+	for (uint32_t i = 0; i < cornellBox.names.size(); ++i) {
+		if (cornellBox.names[i] == "light") {
+			scene->lightPosition = glm::vec3(cornellBox.transforms[i] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+			break;
+		}
+	}
+}
 
 int main() {
 
@@ -154,17 +190,13 @@ int main() {
 	float dt = 1.0f / 60.0f;
 
 	gCamera.SetAspect(float(gWindowProps.width) / float(gWindowProps.height));
-	gCamera.SetPosition(glm::vec3(0.0f, 2.0f, 0.0f));
-	gCamera.SetRotation(glm::vec3(0.0f, glm::pi<float>() * 0.5f, 0.0f));
+	Scene scene;
+	scene.camera = &gCamera;
 
-	std::vector<MeshGroup> scene;
-	scene.push_back(MeshGroup{});
-	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/Sponza/Sponza.gltf", &scene.back());
-	//LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/dragon/dragon.glb", &scene.back());
-	const AABB& debugAABB = scene[0].aabbs[0];
+	InitializeCornellBoxScene(&scene);
 
 	Voxelizer voxelizer;
-	voxelizer.Init(256, 0.1f);
+	voxelizer.Init(64, 0.07f);
 
 	TextureCreateInfo colorAttachment = { gFBOWidth, gFBOHeight };
 	TextureCreateInfo depthAttachment;
@@ -193,11 +225,11 @@ int main() {
 
 		GpuProfiler::Begin("Total Time GPU");
 		// Voxelizer Pass
-		voxelizer.Generate(&gCamera, scene);
+		voxelizer.Generate(&scene);
 
 		// Depth Prepass
 		if(!voxelizer.enableDebugVoxel)
-			depthPrePass.Render(&gCamera, scene);
+			depthPrePass.Render(&scene);
 
 		// Main Pass
 		if (wireframeMode) 
@@ -209,19 +241,33 @@ int main() {
 		mainFBO.bind();
 		mainFBO.setClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 		mainFBO.setViewport(gFBOWidth, gFBOHeight);
-		mainFBO.clear(true);
+		mainFBO.clear(voxelizer.enableDebugVoxel);
 
-		voxelizer.Visualize(&gCamera);
 		glm::mat4 VP = gCamera.GetViewProjectionMatrix();
-
-		if (!voxelizer.enableDebugVoxel) {
-			mainProgram.bind();
-			mainProgram.setMat4("uVP", &VP[0][0]);
-			for (auto& meshGroup : scene)
-				meshGroup.Draw(&mainProgram);
-			mainProgram.unbind();
+		if (voxelizer.enableDebugVoxel) {
+			glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LEQUAL);
+			voxelizer.Visualize(&gCamera);
 		}
+		else {
+			if (!voxelizer.enableDebugVoxel) {
+				glDepthMask(GL_FALSE);
+				glDepthFunc(GL_EQUAL);
+				mainProgram.bind();
+				mainProgram.setMat4("uVP", &VP[0][0]);
+				mainProgram.setTexture("uVolumeTexture", 0, voxelizer.voxelTexture->handle, true);
+				glm::vec3 voxelDim{ (float)voxelizer.mVoxelDims, (float)voxelizer.mUnitVoxelSize, voxelizer.mDebugMipInterpolation };
+				mainProgram.setVec3("uVoxelDims", &voxelDim[0]);
 
+				glm::vec3 cameraPosition = gCamera.GetPosition();
+				mainProgram.setVec3("uCameraPosition", &cameraPosition[0]);
+				mainProgram.setVec3("uLightPosition", &scene.lightPosition[0]);
+				for (auto& meshGroup : scene.meshGroup)
+					meshGroup.Draw(&mainProgram);
+				mainProgram.unbind();
+				glDepthMask(GL_TRUE);
+			}
+		}
 		DebugDraw::Render(VP);
 		mainFBO.unbind();
 		GpuProfiler::End();
@@ -247,6 +293,8 @@ int main() {
 		ImGui::End();
 
 		ImGui::Begin("Options");
+		bool needUpdate = AddGameObjectUI(&scene);
+		voxelizer.mRegenerateVoxelData = needUpdate;
 		GpuProfiler::AddUI();
 		ImGui::Checkbox("Wireframe", &wireframeMode);
 

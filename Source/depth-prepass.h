@@ -14,7 +14,7 @@ class DepthPrePass {
 public:
 	void Initialize(uint32_t width, uint32_t height);
 
-	void Render(Camera* camera, std::vector<MeshGroup>& scene);
+	void Render(Scene* scene);
 
 	unsigned int GetDepthAttachment();
 
