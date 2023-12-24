@@ -106,7 +106,7 @@ void MoveCamera(float dt, bool isWindowActive) {
 	else if (glfwGetKey(gWindowProps.window, GLFW_KEY_2) != GLFW_RELEASE)
 		gCamera.Lift(-walkSpeed);
 }
-
+/*
 bool AddGameObjectUI(Scene* scene) {
 	bool needUpdate = false;
 	for (auto& meshGroup : scene->meshGroup) {
@@ -129,18 +129,22 @@ bool AddGameObjectUI(Scene* scene) {
 	}
 	return needUpdate;
 }
-
+*/
 void InitializeCornellBoxScene(Scene* scene) {
 	scene->lightPosition = glm::vec3(0.0f, 1.0f, -.5f);
 	scene->camera->SetPosition(glm::vec3(0.0f, 1.0f, 2.0f));
 	scene->meshGroup.push_back(MeshGroup{});
 	MeshGroup& cornellBox = scene->meshGroup.back();
-	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/cornell-box/cornell-dragon.gltf", &cornellBox);
+	LoadMesh("C:/Users/Dell/OneDrive/Documents/3D-Assets/Models/cornell-box/cornell-dragon2.gltf", &cornellBox);
 
 	for (uint32_t i = 0; i < cornellBox.names.size(); ++i) {
 		if (cornellBox.names[i] == "light") {
 			scene->lightPosition = glm::vec3(cornellBox.transforms[i] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 			break;
+		}
+		else if (cornellBox.names[i] == "dragon") {
+			cornellBox.materials[i].metallic = 0.5f;
+			cornellBox.materials[i].roughness = 0.1f;
 		}
 	}
 }
@@ -199,13 +203,14 @@ int main() {
 	float dt = 1.0f / 60.0f;
 
 	gCamera.SetAspect(float(gWindowProps.width) / float(gWindowProps.height));
+	gCamera.SetNearPlane(0.1f);
 	Scene scene;
 	scene.camera = &gCamera;
 
-	InitializeSponzaScene(&scene);
+	InitializeCornellBoxScene(&scene);
 
 	Voxelizer voxelizer;
-	voxelizer.Init(256, 0.1f);
+	voxelizer.Init(64, 0.1f);
 
 	TextureCreateInfo colorAttachment = { gFBOWidth, gFBOHeight };
 	TextureCreateInfo depthAttachment;
@@ -302,8 +307,8 @@ int main() {
 		ImGui::End();
 
 		ImGui::Begin("Options");
-		bool needUpdate = AddGameObjectUI(&scene);
-		voxelizer.mRegenerateVoxelData = needUpdate;
+		//bool needUpdate = AddGameObjectUI(&scene);
+		//voxelizer.mRegenerateVoxelData = needUpdate;
 		GpuProfiler::AddUI();
 		ImGui::Checkbox("Wireframe", &wireframeMode);
 

@@ -303,13 +303,13 @@ void LoadMesh(const std::string& filename, MeshGroup* meshGroup) {
 	meshGroup->indexBuffer.init(indices.data(), indexSize, 0);
 
 	uint32_t transformSize = (uint32_t)(meshGroup->transforms.size() * sizeof(glm::mat4));
-	meshGroup->transformBuffer.init(meshGroup->transforms.data(), transformSize, 0);
+	meshGroup->transformBuffer.init(meshGroup->transforms.data(), transformSize, GL_DYNAMIC_STORAGE_BIT);
 
 	uint32_t drawCommandSize = (uint32_t)(meshGroup->drawCommands.size() * sizeof(DrawElementsIndirectCommand));
-	meshGroup->drawIndirectBuffer.init(meshGroup->drawCommands.data(), drawCommandSize, 0);
+	meshGroup->drawIndirectBuffer.init(meshGroup->drawCommands.data(), drawCommandSize, GL_DYNAMIC_STORAGE_BIT);
 
 	uint32_t materialSize = (uint32_t)(meshGroup->materials.size() * sizeof(Material));
-	meshGroup->materialBuffer.init(meshGroup->materials.data(), materialSize, GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_WRITE_BIT);
+	meshGroup->materialBuffer.init(meshGroup->materials.data(), materialSize, GL_DYNAMIC_STORAGE_BIT);
 
 	glGenVertexArrays(1, &meshGroup->vao);
 	glBindVertexArray(meshGroup->vao);
@@ -330,15 +330,20 @@ void LoadMesh(const std::string& filename, MeshGroup* meshGroup) {
 void MeshGroup::updateTransforms()
 {
 	uint32_t dataSize = (uint32_t)(transforms.size() * sizeof(glm::mat4));
-	glNamedBufferData(transformBuffer.handle, dataSize, transforms.data(), 0);
+	glNamedBufferSubData(transformBuffer.handle, 0, dataSize, transforms.data());
 }
 
 void MeshGroup::updateMaterials()
 {
 	uint32_t dataSize = (uint32_t)materials.size() * sizeof(Material);
+	glNamedBufferSubData(materialBuffer.handle, 0, dataSize, materials.data());
+	/*
+	uint32_t dataSize = (uint32_t)materials.size() * sizeof(Material);
 	Material* material = (Material*)glMapNamedBuffer(materialBuffer.handle, GL_WRITE_ONLY);
 	std::memcpy(material, materials.data(), dataSize);
 	glUnmapNamedBuffer(materialBuffer.handle);
+	*/
+
 }
 
 void MeshGroup::Draw(GLProgram* program)

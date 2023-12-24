@@ -41,13 +41,14 @@ bool IsInsideCube(vec3 position) {
 }
 
 void main() {
+   vec3 n = normalize(gNormal);
    Material material = materials[gMaterialIndex];
 
    float lightDist = length(gLightDirection);
    vec3 lightDir = gLightDirection / lightDist;
 
    float attenuation = 1.0f / (lightDist * lightDist);
-   float diffuse = max(dot(normalize(gNormal), lightDir), 0.0f) * attenuation;
+   float diffuse = max(dot(n, lightDir), 0.1f) * attenuation;
    vec3 col = diffuse * material.albedo.rgb;
    col += material.emissive.rgb;
    
